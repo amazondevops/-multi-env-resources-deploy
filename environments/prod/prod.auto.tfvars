@@ -1,0 +1,8 @@
+instance_type = "t2.micro"
+ami_id        = "ami-0a0e10bdd258edd0a"
+key_name      = "WSUS"
+subnet_id     = "subnet-0fbedb031373c1335"
+ec2-name      = "prod-ec2"
+security_group_id = ""
+sg_name       = "prod-sg"
+sg_vpc_id     = "vpc-0eae425bd1e03edc0"
