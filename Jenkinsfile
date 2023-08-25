@@ -21,7 +21,7 @@ pipeline {
     stages {
         stage('Checkout code') {
             steps {
-                git credentialsId: 'BB_CREDS', url: 'https://bitbucket.org/cloudzenix/multienvdeploy/src/master/'
+                git credentialsId: 'BB_CREDS', url: 'https://bitbucket.org/cloudzenix/multi-env-resources-deploy/src/master/'
             }
         }
         
