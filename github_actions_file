@@ -1,0 +1,77 @@
+name: Deploying the AWS resources in multi-envs using common modules
+
+on:
+  workflow_dispatch:
+    inputs:
+      command:
+        description: 'Terraform command to run (plan, APPLY, DESTROY)'
+        default: 'plan'
+        required: true
+      environment:
+        description: 'Environment name (dev or prod)'
+        default: 'dev'
+        required: true
+
+jobs:
+  terraform:
+    runs-on: ubuntu-latest
+    
+    env:
+      ENVIRONMENT: ${{ github.event.inputs.environment }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+        # Checkout the repository's code
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v1
+        with:
+          terraform_version: 1.0.0
+        # Use HashiCorp's setup action to install the specified Terraform version
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-2  # Set the desired region for deployment
+        # Configure AWS credentials using secrets stored in the repository
+
+      - name: Determine working directory based on environment
+        run: |
+          if [ "${ENVIRONMENT}" = "dev" ]; then
+            WORKING_DIRECTORY="environments/dev/"
+          else
+            WORKING_DIRECTORY="environments/prod/"
+          fi
+          echo "WORKING_DIRECTORY=${WORKING_DIRECTORY}" >> $GITHUB_ENV
+        # Determine the working directory based on the selected environment
+
+      - name: Initialize Terraform
+        run: terraform init
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        # Initialize Terraform in the determined working directory
+
+      - name: Validate Terraform
+        run: terraform validate
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        # Validate Terraform configuration files
+
+      - name: Plan Terraform
+        run: terraform plan
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        if: ${{ github.event.inputs.command == 'plan' }}
+        # Run Terraform plan if the input command is 'plan'
+
+      - name: Apply Terraform
+        run: terraform apply -auto-approve
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        if: ${{ github.event.inputs.command == 'APPLY' }}
+        # Apply Terraform changes if the input command is 'APPLY'
+
+      - name: Clean/Destroy Resources
+        run: terraform destroy -auto-approve
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        if: ${{ github.event.inputs.command == 'DESTROY' }}
+        # Destroy Terraform-managed resources if the input command is 'DESTROY'
