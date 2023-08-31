@@ -1,0 +1,85 @@
+---
+workflow:
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+      when: always
+    - when: always
+
+variables:
+  #TF_DIR: ${DEV_TERRAFORM_ROOT_PATH}
+  #TF_DIR: $TF_DIR_CONDITIONAL
+  AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+  AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+  AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION}
+stages:
+  - validate
+  - plan
+  - apply
+  - destroy
+
+image:
+  name: hashicorp/terraform:light
+  entrypoint: [""]
+
+before_script:
+  - |
+    if [ "$CI_COMMIT_BRANCH" = "main" ]; then
+      TF_DIR="$PROD_TERRAFORM_ROOT_PATH"
+    elif [ "$CI_COMMIT_BRANCH" = "dev" ]; then
+      TF_DIR="$DEV_TERRAFORM_ROOT_PATH"
+    else
+      echo "Branch not recognized: $CI_COMMIT_BRANCH"
+      exit 1
+    fi
+  - cd $TF_DIR
+  - terraform init
+
+
+validate:
+  stage: validate
+  script:
+    - terraform validate
+  cache:
+    key: ${CI_COMMIT_REF_NAME}
+    paths:
+      - ${TF_DIR}/.terraform
+    policy: pull-push
+
+plan:
+  stage: plan
+  script:
+    - terraform plan 
+  dependencies:
+    - validate
+  cache:
+    key: ${CI_COMMIT_REF_NAME}
+    paths:
+      - ${TF_DIR}/.terraform
+    policy: pull
+
+apply:
+  stage: apply
+  script:
+    - terraform apply -auto-approve
+  dependencies:
+    - plan
+  cache:
+    key: ${CI_COMMIT_REF_NAME}
+    paths:
+      - ${TF_DIR}/.terraform
+    policy: pull
+  when: manual
+
+destroy:
+  stage: destroy
+  script:
+    - terraform destroy -auto-approve
+  dependencies:
+    - plan
+    - apply
+  cache:
+    key: ${CI_COMMIT_REF_NAME}
+    paths:
+      - ${TF_DIR}/.terraform
+    policy: pull
+  when: manual
